@@ -8,7 +8,7 @@ Online store database with customers, products, orders, order items and order lo
 
 --calculate order total--
 
-calculate_order_total function calculates the total order price using quantity * priceб if order has no products it returns 0
+calculate_order_total function calculates the total order price using quantity * price if order has no products it returns 0
 
 --create order--
 
