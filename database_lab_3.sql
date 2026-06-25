@@ -116,3 +116,123 @@ begin
     where product_id = input_product_id;
 end;
 $$;
+
+--task 4--
+create function update_order_total()
+returns trigger
+language plpgsql
+as $$
+declare
+    current_order_id int;
+begin
+    current_order_id := coalesce(new.order_id, old.order_id); --get id to insert, update, delete--
+
+    update orders --update total--
+    set total_amount = calculate_order_total(current_order_id)
+    where order_id = current_order_id;
+
+    return coalesce(new, old);
+end;
+$$;
+
+create trigger trg_update_order_total_after_insert --insert--
+after insert on order_items
+for each row
+execute function update_order_total();
+
+create trigger trg_update_order_total_after_update --change quantity/price--
+after update of quantity, price on order_items
+for each row
+execute function update_order_total();
+
+create trigger trg_update_order_total_after_delete --delete--
+after delete on order_items
+for each row
+execute function update_order_total();
+
+--task 5--
+create function log_order_creation()
+returns trigger
+language plpgsql
+as $$
+begin
+    insert into order_log (order_id, customer_id, action, log_date) --add order info to log--
+    values (new.order_id, new.customer_id, 'ORDER_CREATED', current_timestamp);
+
+    return new;
+end;
+$$;
+
+create trigger trg_log_order_creation --after order creation--
+after insert on orders
+for each row
+execute function log_order_creation();
+
+--task 6--
+--tests--
+insert into customers (full_name, email, balance)
+values
+    ('name1 surname1', 'name1@mail.com', 6700.00),
+    ('name2 surname2', 'name2@mail.com', 6767.00);
+
+insert into products (product_name, price, stock_quantity)
+values
+    ('prod1', 1000.00, 5),
+    ('prod2', 2000.00, 10),
+    ('prod3', 3000.00, 15);
+
+--procedure--
+call create_order(1);
+call create_order(2);
+call add_product_to_order(1, 1, 1);
+call add_product_to_order(1, 2, 2);
+call add_product_to_order(2, 3, 1);
+
+--customers--
+select *
+from customers
+order by customer_id;
+
+--products+stock--
+select *
+from products
+order by product_id;
+
+--orders+totals
+select *
+from orders
+order by order_id;
+
+--order items--
+select *
+from order_items
+order by order_item_id;
+
+--calculation--
+select calculate_order_total(1) as order_1_total;
+
+--logs--
+select *
+from order_log
+order by log_id;
+
+--update--
+update order_items
+set quantity = 3
+where order_id = 1
+  and product_id = 2;
+
+--total after update--
+select order_id, total_amount
+from orders
+where order_id = 1;
+
+--delete--
+delete from order_items
+where order_id = 1
+  and product_id = 2;
+
+--total after delete--
+select order_id, total_amount
+from orders
+where order_id = 1;
