@@ -236,3 +236,16 @@ where order_id = 1
 select order_id, total_amount
 from orders
 where order_id = 1;
+
+--bonus--
+explain analyze
+select
+    items.order_id,
+    products.product_name,
+    items.quantity,
+    items.price,
+    items.quantity * items.price as item_total
+from order_items as items
+join products as products
+    on items.product_id = products.product_id
+where items.order_id = 1;
